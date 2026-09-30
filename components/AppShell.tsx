@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation'
 const nav = [
   { href: '/', label: '窗口总览' },
   { href: '/windows', label: '授权窗口' },
+  { href: '/distribution', label: '国际发行合并' },
   { href: '/reviews', label: '审阅与版本' },
 ]
 
