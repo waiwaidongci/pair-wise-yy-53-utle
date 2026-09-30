@@ -2,6 +2,7 @@ import { initTRPC } from '@trpc/server'
 import { z } from 'zod'
 import { initialComments, initialWindows } from '@/lib/mock-data'
 import { findConflicts } from '@/lib/rules'
+import { alignReceipt, batches, completePages, computeTermsHash, confirmDraft, draftVersion, draftWindows, materialPackages, mergeBatch, receipts, simulateConcurrentEdit, snapshots, versions, works } from './issuance-store'
 
 const t = initTRPC.create()
 const windowInput = z.object({
@@ -21,6 +22,22 @@ export const appRouter = t.router({
     return collision ? { valid: false, message: `与现有窗口 ${collision.id} 重叠，请调整窗口或明确优先级。` } : { valid: true, message: '窗口结构校验通过。' }
   }),
   comments: t.procedure.query(() => initialComments),
+
+  // ---- 国际发行回执合并 ----
+  issuanceWorks: t.procedure.query(() => works),
+  issuanceReceipts: t.procedure.query(() => receipts),
+  issuanceBatches: t.procedure.query(() => batches),
+  issuanceDraftWindows: t.procedure.query(() => draftWindows),
+  issuanceMaterialPackages: t.procedure.query(() => materialPackages),
+  issuanceSnapshots: t.procedure.query(() => Object.values(snapshots).map((s) => ({ ...s, status: (s.termsHash === computeTermsHash(s.workId) ? '有效' : '已失效') as '有效' | '已失效' }))),
+  issuanceVersions: t.procedure.query(() => versions),
+  issuanceDraftVersion: t.procedure.query(() => draftVersion),
+
+  mergeBatch: t.procedure.input(z.object({ batchId: z.string() })).mutation(({ input }) => mergeBatch(input.batchId)),
+  confirmDraft: t.procedure.input(z.object({ expectedVersion: z.number() })).mutation(({ input }) => confirmDraft(input.expectedVersion)),
+  completeReceiptPages: t.procedure.input(z.object({ receiptId: z.string() })).mutation(({ input }) => { completePages(input.receiptId); return { ok: true } }),
+  alignReceiptToSnapshot: t.procedure.input(z.object({ receiptId: z.string() })).mutation(({ input }) => { alignReceipt(input.receiptId); return { ok: true } }),
+  simulateConcurrentEdit: t.procedure.mutation(() => ({ version: simulateConcurrentEdit() })),
 })
 
 export type AppRouter = typeof appRouter
